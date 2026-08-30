@@ -21,9 +21,9 @@ import {
   Bot,
   User,
 } from 'lucide-react';
-import { Fur } from 'feral-fur';
-import 'feral-fur/fur.css';
+import { FrostedLogo } from './cursors/FrostedLogo';
 import { sendChat, type Message } from './api';
+
 
 
 interface QueryCard {
@@ -202,25 +202,15 @@ export default function App() {
         <div className="header-content">
           <div
             className="brand-wrapper"
-            onClick={clearChat}
-            role="button"
-            tabIndex={0}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}
-            title="Skylark BI — Click to return home (Interactive fur)"
+            style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}
           >
-            <div style={{ height: '54px', display: 'flex', alignItems: 'center', overflow: 'visible' }}>
-              <Fur
-                text="Skylark BI."
-                color="#F97316"
-                fluff={1.2}
-                density={1.6}
-                mess={0.15}
-                style={{ height: '100%', width: 'auto', aspectRatio: '3.8 / 1' }}
-              />
-            </div>
-
-            <span className="brand-tag">Monday.com Live</span>
+            <FrostedLogo
+              text="Skylark BI"
+              onClick={clearChat}
+            />
+            <span className="brand-tag hide-mobile">Monday.com Live</span>
           </div>
+
 
 
 
