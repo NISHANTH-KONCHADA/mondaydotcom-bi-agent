@@ -11,11 +11,9 @@ const DEFAULT_CURSORS: CursorDef[] = [
 export function FrostedLogo({
   text = 'Skylark BI',
   onClick,
-  className = '',
 }: {
   text?: string;
   onClick?: () => void;
-  className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<FlyingCursors | null>(null);
@@ -36,16 +34,16 @@ export function FrostedLogo({
     <div
       ref={containerRef}
       onClick={onClick}
-      className={`relative inline-flex items-center justify-center select-none ${className}`}
       style={{
         position: 'relative',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '8px 18px',
-        minHeight: '48px',
+        padding: '6px 14px',
+        minHeight: '44px',
         cursor: 'pointer',
         overflow: 'visible',
+        userSelect: 'none',
       }}
       title="Skylark BI — Click to return home"
     >
@@ -53,12 +51,13 @@ export function FrostedLogo({
         <span
           style={{
             fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            fontSize: '20px',
+            fontSize: '19px',
             fontWeight: 800,
-            letterSpacing: '-0.035em',
+            letterSpacing: '-0.03em',
             color: 'var(--text-primary)',
             padding: '2px 4px',
             whiteSpace: 'nowrap',
+            display: 'inline-block',
           }}
         >
           {text}
