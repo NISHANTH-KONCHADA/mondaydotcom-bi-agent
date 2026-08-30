@@ -21,7 +21,6 @@ export function RisingText({
       className={`ai-rising-text ${className}`}
       style={{ display: 'block', whiteSpace: 'nowrap', lineHeight: 1, ...style }}
     >
-
       {Array.from(text).map((ch, i) => (
         <span
           key={i}
@@ -122,8 +121,8 @@ function Step({
                 ? 'var(--text-secondary, #737373)'
                 : state === 'live'
                 ? 'var(--text-primary, #171717)'
-                : '#f4f4f5',
-            border: state === 'next' ? '1px solid #e5e5e5' : 'none',
+                : 'var(--badge-bg, #f4f4f5)',
+            border: state === 'next' ? '1px solid var(--border-color, #e5e5e5)' : 'none',
           }}
         />
         {state === 'live' && (
@@ -171,7 +170,7 @@ function BlockContent() {
             left: '16.66%',
             right: '16.66%',
             height: '1px',
-            background: '#e5e5e5',
+            background: 'var(--border-color, #e5e5e5)',
             animationDelay: '60ms',
           }}
         />
@@ -195,7 +194,7 @@ function ProgressContent() {
               style={{ width: '14px', height: '14px', flexShrink: 0 }}
               aria-hidden="true"
             >
-              <circle cx="8" cy="8" r="6" fill="none" stroke="#e5e5e5" strokeWidth="2" />
+              <circle cx="8" cy="8" r="6" fill="none" stroke="var(--border-color, #e5e5e5)" strokeWidth="2" />
               <path
                 d="M8 2A6 6 0 0 1 14 8"
                 className="ai-spinner"
