@@ -203,11 +203,23 @@ export default function App() {
         <div className="header-content">
           <div
             className="brand-wrapper"
-            style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}
+            onClick={clearChat}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
+            title="Skylark BI — Click to return home"
           >
-            <AiLightsCard onClick={clearChat} />
-            <span className="brand-tag hide-mobile">Monday.com Live</span>
+            <div className="brand-logo-badge">
+              <Terminal size={17} strokeWidth={2.2} />
+            </div>
+            <div>
+              <div className="brand-title">
+                Skylark <span className="accent">BI</span>
+                <span className="brand-tag">Monday.com Live</span>
+              </div>
+            </div>
           </div>
+
 
 
 
@@ -258,14 +270,24 @@ export default function App() {
       </header>
 
       <main>
-        {/* ─── Hero Section ─── */}
+        {/* ─── Hero Section with Live AI Pulse ─── */}
         <section className="hero">
-          <h1>
-            Founder-level intelligence for <span className="highlight">Skylark Drones</span>.
-          </h1>
-          <p>
-            Real-time analytics and cross-board reasoning across Deals Pipeline (346 records) and Work Orders (176 records).
-          </p>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
+            <div style={{ maxWidth: '640px' }}>
+              <h1>
+                Founder-level intelligence for <span className="highlight">Skylark Drones</span>.
+              </h1>
+              <p>
+                Real-time analytics and cross-board reasoning across Deals Pipeline (346 records) and Work Orders (176 records).
+              </p>
+            </div>
+            {messages.length === 0 && (
+              <div style={{ paddingTop: '8px' }}>
+                <AiLightsCard />
+              </div>
+            )}
+          </div>
         </section>
 
         {/* ─── Category Filter Chips (Stash Component) ─── */}
@@ -386,15 +408,19 @@ export default function App() {
               })}
 
               {loading && (
-                <div className="typing-container">
-                  <Loader2 size={16} className="spinner-icon" />
-                  <span>Querying Monday.com boards and evaluating data quality...</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-start' }}>
+                  <AiLightsCard />
+                  <div className="typing-container">
+                    <Loader2 size={15} className="spinner-icon" />
+                    <span>Executing agent loop on live Monday.com boards...</span>
+                  </div>
                 </div>
               )}
               <div ref={bottomRef} />
             </div>
           </div>
         )}
+
 
         {/* ─── Search / Query Input (matching Stash search-container) ─── */}
         <div className="search-container">
