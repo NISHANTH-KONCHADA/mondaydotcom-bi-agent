@@ -205,26 +205,23 @@ export default function App() {
             onClick={clearChat}
             role="button"
             tabIndex={0}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
-            title="Skylark BI — Click to reset / Pet the fur logo"
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}
+            title="Skylark BI — Click to return home (Interactive fur)"
           >
-            <div style={{ height: '40px', display: 'flex', alignItems: 'center', overflow: 'visible' }}>
+            <div style={{ height: '54px', display: 'flex', alignItems: 'center', overflow: 'visible' }}>
               <Fur
-                text="SKYLARK"
+                text="Skylark BI."
                 color="#F97316"
-                fluff={0.85}
-                density={1.2}
-                mess={0.3}
-                style={{ width: '140px', height: '40px', aspectRatio: '3.5 / 1' }}
+                fluff={1.2}
+                density={1.6}
+                mess={0.15}
+                style={{ height: '100%', width: 'auto', aspectRatio: '3.8 / 1' }}
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span className="brand-title" style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em' }}>
-                <span className="accent">BI</span>
-              </span>
-              <span className="brand-tag">Monday.com Live</span>
-            </div>
+
+            <span className="brand-tag">Monday.com Live</span>
           </div>
+
 
 
 
