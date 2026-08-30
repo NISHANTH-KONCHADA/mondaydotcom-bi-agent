@@ -21,7 +21,10 @@ import {
   Bot,
   User,
 } from 'lucide-react';
+import { Fur } from 'feral-fur';
+import 'feral-fur/fur.css';
 import { sendChat, type Message } from './api';
+
 
 interface QueryCard {
   id: string;
@@ -202,19 +205,27 @@ export default function App() {
             onClick={clearChat}
             role="button"
             tabIndex={0}
-            style={{ cursor: 'pointer' }}
-            title="Return to Home"
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+            title="Skylark BI — Click to reset / Pet the fur logo"
           >
-            <div className="brand-logo-badge">
-              <Terminal size={17} strokeWidth={2.2} />
+            <div style={{ height: '40px', display: 'flex', alignItems: 'center', overflow: 'visible' }}>
+              <Fur
+                text="SKYLARK"
+                color="#F97316"
+                fluff={0.85}
+                density={1.2}
+                mess={0.3}
+                style={{ width: '140px', height: '40px', aspectRatio: '3.5 / 1' }}
+              />
             </div>
-            <div>
-              <div className="brand-title">
-                Skylark <span className="accent">BI</span>
-                <span className="brand-tag">Monday.com Live</span>
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="brand-title" style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '-0.02em' }}>
+                <span className="accent">BI</span>
+              </span>
+              <span className="brand-tag">Monday.com Live</span>
             </div>
           </div>
+
 
 
           <div className="header-actions">
