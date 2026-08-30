@@ -197,7 +197,14 @@ export default function App() {
       {/* ─── Header matching stash.nishanthkonchada.dev ─── */}
       <header className="site-header">
         <div className="header-content">
-          <div className="brand-wrapper">
+          <div
+            className="brand-wrapper"
+            onClick={clearChat}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer' }}
+            title="Return to Home"
+          >
             <div className="brand-logo-badge">
               <Terminal size={17} strokeWidth={2.2} />
             </div>
@@ -208,6 +215,7 @@ export default function App() {
               </div>
             </div>
           </div>
+
 
           <div className="header-actions">
             <button
@@ -424,14 +432,6 @@ export default function App() {
         </div>
         <div className="footer-links">
           <a
-            href="https://stash.nishanthkonchada.dev"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="footer-link"
-          >
-            Design by Stash
-          </a>
-          <a
             href="https://github.com/NISHANTH-KONCHADA/mondaydotcom-bi-agent"
             target="_blank"
             rel="noopener noreferrer"
@@ -441,6 +441,7 @@ export default function App() {
           </a>
         </div>
       </footer>
+
     </div>
   );
 }
