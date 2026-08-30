@@ -22,7 +22,9 @@ import {
   User,
 } from 'lucide-react';
 import { AiLightsCard } from './ai-lights/AiLightsCard';
+import { ThinkingIndicator } from './components/ThinkingIndicator';
 import { sendChat, type Message } from './api';
+
 
 
 
@@ -412,10 +414,11 @@ export default function App() {
                   <AiLightsCard />
                   <div className="typing-container">
                     <Loader2 size={15} className="spinner-icon" />
-                    <span>Executing agent loop on live Monday.com boards...</span>
+                    <ThinkingIndicator />
                   </div>
                 </div>
               )}
+
               <div ref={bottomRef} />
             </div>
           </div>
