@@ -73,7 +73,7 @@ app.post('/api/cache/clear', (_, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Skylark BI Backend running on port ${PORT}`);
+  console.log(`Skylark BI Backend running on port ${PORT}`);
   console.log(`   Deals Board ID:      ${process.env.MONDAY_DEALS_BOARD_ID}`);
   console.log(`   Work Orders Board ID: ${process.env.MONDAY_WORK_ORDERS_BOARD_ID}`);
 });

@@ -163,7 +163,7 @@ export async function getWorkOrders(filters = {}) {
         coverage_note: `Contract amount populated for ${withAmount} of ${filtered.length} work orders.`,
         normalizations: data_quality.normalizations || [],
         anomalies: anomalies.length > 0
-          ? [`⚠️ ${anomalies.length} work order(s) with negative billing amount (over-billed vs PO).`]
+          ? [`[Anomaly Alert] ${anomalies.length} work order(s) with negative billing amount (over-billed vs PO).`]
           : [],
       },
       breakdowns: {
