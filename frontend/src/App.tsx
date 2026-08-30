@@ -2,20 +2,102 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  Send, Trash2, BarChart3, Zap, TrendingUp, FileText,
-  Activity, RefreshCw, ChevronRight
+  Search,
+  ArrowUpRight,
+  TrendingUp,
+  FileText,
+  AlertTriangle,
+  Layers,
+  Sparkles,
+  Sun,
+  Moon,
+  Trash2,
+  Terminal,
+  Loader2,
+  DollarSign,
+  Building2,
+  CheckCircle2,
+  ExternalLink,
+  Bot,
+  User,
 } from 'lucide-react';
 import { sendChat, type Message } from './api';
 
-const STARTER_QUERIES = [
-  { icon: '📊', text: "How's our pipeline looking for Mining sector this quarter?" },
-  { icon: '🏆', text: 'Which deals were won this year? Show me the total value.' },
-  { icon: '⚠️', text: 'Which won deals don\'t have a work order yet?' },
-  { icon: '💰', text: 'What\'s our billing and collections status breakdown?' },
-  { icon: '👥', text: 'Show me rep performance across both deals and work orders.' },
-  { icon: '🔍', text: 'Are there any anomalies in our work order billing amounts?' },
-  { icon: '📈', text: 'Which sectors are driving the most pipeline value?' },
-  { icon: '🗓️', text: 'Which open deals have overdue tentative close dates?' },
+interface QueryCard {
+  id: string;
+  category: string;
+  badge: 'live' | 'cross' | 'anomaly' | 'free';
+  badgeText: string;
+  title: string;
+  description: string;
+  tags: string[];
+  query: string;
+  isFeatured?: boolean;
+}
+
+const STARTER_RESOURCES: QueryCard[] = [
+  {
+    id: 'mining-pipeline',
+    category: 'Pipeline',
+    badge: 'live',
+    badgeText: 'Live Query',
+    title: 'Mining Sector Pipeline',
+    description: 'Breakdown of deals, total pipeline value with data coverage, and stage distribution in Mining.',
+    tags: ['mining', 'pipeline', 'deal-value'],
+    query: "How is our pipeline looking for the Mining sector? Show me value and stage distribution.",
+    isFeatured: true,
+  },
+  {
+    id: 'won-deals-audit',
+    category: 'Reconciliation',
+    badge: 'cross',
+    badgeText: 'Cross-Board',
+    title: 'Won Deals Without Work Orders',
+    description: 'Cross-board join between Deals and Work Orders to flag won contracts missing execution trackers.',
+    tags: ['reconciliation', 'won-deals', 'work-orders'],
+    query: 'Which won deals do not have a work order yet?',
+    isFeatured: true,
+  },
+  {
+    id: 'billing-anomalies',
+    category: 'Operations',
+    badge: 'anomaly',
+    badgeText: 'Anomaly Alert',
+    title: 'Billing Overrun Audit',
+    description: 'Identifies negative amounts to be billed, surfacing operational over-billing versus purchase orders.',
+    tags: ['work-orders', 'billing-status', 'anomalies'],
+    query: 'Are there any anomalies or negative amounts in our work order billing?',
+  },
+  {
+    id: 'sectoral-ranking',
+    category: 'Pipeline',
+    badge: 'live',
+    badgeText: 'Deals',
+    title: 'Sector Performance Overview',
+    description: 'Aggregates all 346 deals across Mining, Powerline, Renewables, Railways, and DSP sectors.',
+    tags: ['sectors', 'revenue', 'aggregates'],
+    query: 'Show me the pipeline breakdown and performance across all sectors.',
+  },
+  {
+    id: 'rep-performance',
+    category: 'Sales',
+    badge: 'cross',
+    badgeText: 'Cross-Board',
+    title: 'Owner Performance Matrix',
+    description: 'Evaluates rep performance across deal closures (Owner code) and project handoffs.',
+    tags: ['owners', 'sales-velocity', 'operations'],
+    query: 'Show me rep performance across both deals pipeline and work orders.',
+  },
+  {
+    id: 'receivables-health',
+    category: 'Finance',
+    badge: 'live',
+    badgeText: 'Collections',
+    title: 'AR Priority & Receivables',
+    description: 'Inspects billed amounts, collected cash, outstanding receivables, and priority collection flags.',
+    tags: ['receivables', 'collections', 'ar-priority'],
+    query: "What is our current billing and collections health across work orders?",
+  },
 ];
 
 interface DisplayMessage {
@@ -25,173 +107,53 @@ interface DisplayMessage {
   isError?: boolean;
 }
 
-function TypingIndicator({ step }: { step: string }) {
-  return (
-    <div className="typing-row">
-      <div className="avatar agent">🤖</div>
-      <div className="typing-bubble">
-        <span className="typing-step">{step}</span>
-        <div className="typing-dots">
-          <div className="typing-dot" />
-          <div className="typing-dot" />
-          <div className="typing-dot" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MessageBubble({ msg }: { msg: DisplayMessage }) {
-  const isUser = msg.role === 'user';
-  return (
-    <div className={`message-row ${isUser ? 'user' : ''}`}>
-      <div className={`avatar ${isUser ? 'user' : 'agent'}`}>
-        {isUser ? '👤' : '🤖'}
-      </div>
-      <div>
-        {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
-          <div className="tool-indicator">
-            <Zap size={10} />
-            {msg.toolCalls.map((t, i) => (
-              <span key={i} className="tool-chip">{t}()</span>
-            ))}
-          </div>
-        )}
-        <div className={`message-bubble ${isUser ? 'user' : 'agent'}`}>
-          {isUser ? (
-            <span>{msg.content}</span>
-          ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {msg.content}
-            </ReactMarkdown>
-          )}
-          {msg.isError && (
-            <div className="dq-badge" style={{ marginTop: 8 }}>
-              ⚠️ Error — check console for details
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Sidebar({ onSummary, onNav }: { onSummary: () => void; onNav: (q: string) => void }) {
-  return (
-    <aside className="sidebar">
-      <div className="sidebar-logo">
-        <div className="logo-icon">🚁</div>
-        <div>
-          <div className="logo-text">Skylark BI</div>
-          <div className="logo-sub">Intelligence Agent</div>
-        </div>
-      </div>
-
-      <div className="sidebar-divider" />
-
-      <div>
-        <div className="sidebar-section-title">Navigation</div>
-        <nav className="sidebar-nav">
-          <button className="nav-btn active" id="nav-chat">
-            <Activity size={15} /> Chat
-          </button>
-          <button className="nav-btn" id="nav-summary" onClick={onSummary}>
-            <FileText size={15} /> Leadership Briefing
-          </button>
-          <button className="nav-btn" id="nav-pipeline" onClick={() => onNav("Show me the pipeline overview across all sectors")}>
-            <TrendingUp size={15} /> Pipeline
-          </button>
-          <button className="nav-btn" id="nav-ops" onClick={() => onNav("Show me work order operational health — execution and billing status breakdown")}>
-            <BarChart3 size={15} /> Operations
-          </button>
-        </nav>
-      </div>
-
-      <div className="sidebar-divider" />
-
-      <div>
-        <div className="sidebar-section-title">Quick Queries</div>
-        <nav className="sidebar-nav">
-          {STARTER_QUERIES.slice(0, 4).map((q, i) => (
-            <button key={i} className="nav-btn" onClick={() => onNav(q.text)} id={`quick-${i}`}>
-              <ChevronRight size={13} />
-              <span style={{ fontSize: 12 }}>{q.text.slice(0, 38)}…</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <div className="sidebar-bottom">
-        <div className="status-badge">
-          <div className="status-dot" />
-          Monday.com Live
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-function EmptyState({ onQuery }: { onQuery: (q: string) => void }) {
-  return (
-    <div className="empty-state">
-      <div className="empty-icon">📊</div>
-      <div>
-        <div className="empty-title">Ask me anything about your business</div>
-        <div className="empty-sub" style={{ marginTop: 8 }}>
-          I have live access to your Deals Pipeline and Work Orders from Monday.com.
-          Ask founder-level questions in plain English.
-        </div>
-      </div>
-      <div className="starter-grid">
-        {STARTER_QUERIES.map((q, i) => (
-          <button
-            key={i}
-            id={`starter-${i}`}
-            className="starter-card"
-            onClick={() => onQuery(q.text)}
-          >
-            <span className="starter-card-icon">{q.icon}</span>
-            <span className="starter-card-text">{q.text}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [typingStep, setTypingStep] = useState('Thinking...');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize theme from localStorage / system preference
+  useEffect(() => {
+    const saved = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute('data-theme', saved);
+    } else {
+      setTheme('light');
+      document.documentElement.setAttribute('data-theme', 'light');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const handleSubmit = useCallback(async (text?: string) => {
-    const query = (text || input).trim();
+  const handleSubmit = useCallback(async (queryText?: string) => {
+    const query = (queryText || input).trim();
     if (!query || loading) return;
 
     setInput('');
     const userMsg: DisplayMessage = { role: 'user', content: query };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
-    setTypingStep('Connecting to Monday.com...');
 
-    // Build conversation history for API
     const history: Message[] = [...messages, userMsg].map(m => ({
       role: m.role,
       content: m.content,
     }));
 
     try {
-      // Simulate step progression
-      setTimeout(() => setTypingStep('Querying data...'), 600);
-      setTimeout(() => setTypingStep('Analyzing with AI...'), 1800);
-
       const result = await sendChat(history);
       setMessages(prev => [
         ...prev,
@@ -206,7 +168,7 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          content: `I encountered an error: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`,
+          content: `Error: ${err instanceof Error ? err.message : 'Unable to complete request'}. Please try again.`,
           isError: true,
         },
       ]);
@@ -216,88 +178,269 @@ export default function App() {
     }
   }, [input, loading, messages]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSubmit();
     }
   };
 
-  const handleSummary = () => handleSubmit('/summary');
+  const handleExecutiveSummary = () => handleSubmit('/summary');
   const clearChat = () => setMessages([]);
 
-  // Auto-resize textarea
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
-  };
+  const filteredCards = selectedCategory === 'All'
+    ? STARTER_RESOURCES
+    : STARTER_RESOURCES.filter(c => c.category.toLowerCase() === selectedCategory.toLowerCase());
 
   return (
-    <div className="app-layout">
-      <Sidebar onSummary={handleSummary} onNav={(q) => handleSubmit(q)} />
-
-      <div className="chat-main">
-        {/* Header */}
-        <div className="chat-header">
-          <div>
-            <div className="chat-header-title">Business Intelligence Agent</div>
-            <div className="chat-header-sub">Deals Pipeline · Work Orders · Live from Monday.com</div>
+    <div className="site-container">
+      {/* ─── Header matching stash.nishanthkonchada.dev ─── */}
+      <header className="site-header">
+        <div className="header-content">
+          <div className="brand-wrapper">
+            <div className="brand-logo-badge">
+              <Terminal size={17} strokeWidth={2.2} />
+            </div>
+            <div>
+              <div className="brand-title">
+                Skylark <span className="accent">BI</span>
+                <span className="brand-tag">Monday.com Live</span>
+              </div>
+            </div>
           </div>
+
           <div className="header-actions">
-            <button id="weekly-briefing-btn" className="summary-btn" onClick={handleSummary}>
-              <FileText size={14} /> Weekly Briefing
+            <button
+              className="sparkle-btn primary"
+              onClick={handleExecutiveSummary}
+              title="Generate leadership update"
+            >
+              <Sparkles size={14} />
+              <span>Weekly Briefing</span>
             </button>
-            <button id="clear-chat-btn" className="clear-btn" onClick={clearChat} title="Clear conversation">
-              <Trash2 size={15} />
+
+            <a
+              href="https://github.com/NISHANTH-KONCHADA/mondaydotcom-bi-agent"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sparkle-btn hide-mobile"
+            >
+              <ExternalLink size={14} />
+              <span>GitHub</span>
+            </a>
+
+            {messages.length > 0 && (
+              <button
+                className="sparkle-btn"
+                onClick={clearChat}
+                title="Clear conversation history"
+              >
+                <Trash2 size={14} />
+                <span className="hide-mobile">Reset</span>
+              </button>
+            )}
+
+            <button
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              aria-label="Toggle theme"
+            >
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
             </button>
           </div>
         </div>
+      </header>
 
-        {/* Messages */}
-        <div className="messages-container" id="messages-container">
-          {messages.length === 0 && !loading ? (
-            <EmptyState onQuery={(q) => handleSubmit(q)} />
-          ) : (
-            <>
-              {messages.map((msg, i) => (
-                <MessageBubble key={i} msg={msg} />
+      <main>
+        {/* ─── Hero Section ─── */}
+        <section className="hero">
+          <h1>
+            Founder-level intelligence for <span className="highlight">Skylark Drones</span>.
+          </h1>
+          <p>
+            Real-time analytics and cross-board reasoning across Deals Pipeline (346 records) and Work Orders (176 records).
+          </p>
+        </section>
+
+        {/* ─── Category Filter Chips (Stash Component) ─── */}
+        {messages.length === 0 && (
+          <>
+            <div className="category-chips-container">
+              <div className="category-chips">
+                <button
+                  className={`chip ${selectedCategory === 'All' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('All')}
+                >
+                  All Queries <span className="chip-count">6</span>
+                </button>
+                <button
+                  className={`chip ${selectedCategory === 'Pipeline' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('Pipeline')}
+                >
+                  Deals Pipeline <span className="chip-count">2</span>
+                </button>
+                <button
+                  className={`chip ${selectedCategory === 'Reconciliation' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('Reconciliation')}
+                >
+                  Reconciliation <span className="chip-count">1</span>
+                </button>
+                <button
+                  className={`chip ${selectedCategory === 'Operations' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('Operations')}
+                >
+                  Operations <span className="chip-count">1</span>
+                </button>
+                <button
+                  className={`chip ${selectedCategory === 'Sales' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('Sales')}
+                >
+                  Rep Performance <span className="chip-count">1</span>
+                </button>
+                <button
+                  className={`chip ${selectedCategory === 'Finance' ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory('Finance')}
+                >
+                  Receivables <span className="chip-count">1</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ─── Resource Grid matching stash.nishanthkonchada.dev ─── */}
+            <div className="resource-grid">
+              {filteredCards.map((card) => (
+                <div
+                  key={card.id}
+                  className={`resource-card ${card.isFeatured ? 'featured' : ''}`}
+                  onClick={() => handleSubmit(card.query)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="card-header">
+                    <div className="icon-title">
+                      <div className="card-icon-box">
+                        {card.badge === 'live' && <TrendingUp size={15} />}
+                        {card.badge === 'cross' && <Layers size={15} />}
+                        {card.badge === 'anomaly' && <AlertTriangle size={15} />}
+                      </div>
+                      <h3>{card.title}</h3>
+                    </div>
+                    <span className={`badge ${card.badge}`}>{card.badgeText}</span>
+                  </div>
+
+                  <p className="description">{card.description}</p>
+
+                  <div className="card-footer">
+                    <div className="tags">
+                      {card.tags.map((t, idx) => (
+                        <span key={idx} className="tag">#{t}</span>
+                      ))}
+                    </div>
+                    <ArrowUpRight size={15} className="external-icon" />
+                  </div>
+                </div>
               ))}
-              {loading && <TypingIndicator step={typingStep} />}
-            </>
-          )}
-          <div ref={bottomRef} />
-        </div>
+            </div>
+          </>
+        )}
 
-        {/* Input */}
-        <div className="input-area">
-          <div className="input-wrapper">
-            <textarea
-              id="chat-input"
+        {/* ─── Conversation Stream ─── */}
+        {messages.length > 0 && (
+          <div className="chat-section">
+            <div className="messages-list">
+              {messages.map((msg, i) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div key={i} className={`message-item ${isUser ? 'user' : 'assistant'}`}>
+                    <div className="avatar-badge">
+                      {isUser ? <User size={15} /> : <Bot size={15} />}
+                    </div>
+                    <div className="message-body">
+                      {!isUser && msg.toolCalls && msg.toolCalls.length > 0 && (
+                        <div className="message-tools-trace">
+                          <Terminal size={12} />
+                          <span>Executed:</span>
+                          {msg.toolCalls.map((t, tIdx) => (
+                            <span key={tIdx} className="tool-tag">{t}()</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="message-card">
+                        {isUser ? (
+                          <span>{msg.content}</span>
+                        ) : (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {loading && (
+                <div className="typing-container">
+                  <Loader2 size={16} className="spinner-icon" />
+                  <span>Querying Monday.com boards and evaluating data quality...</span>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </div>
+        )}
+
+        {/* ─── Search / Query Input (matching Stash search-container) ─── */}
+        <div className="search-container">
+          <div className="search-input-wrapper">
+            <Search size={18} className="search-icon" />
+            <input
               ref={inputRef}
-              className="message-input"
+              type="text"
+              className="query-input"
               value={input}
-              onChange={handleInputChange}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask a business question... (e.g., 'How's our Renewables pipeline?')"
-              rows={1}
+              placeholder="Ask an executive query (e.g. 'How is our Renewables pipeline?' or '/summary')..."
               disabled={loading}
             />
             <button
-              id="send-btn"
-              className="send-btn"
+              className="input-send-btn"
               onClick={() => handleSubmit()}
               disabled={!input.trim() || loading}
-              title="Send message"
             >
-              {loading ? <RefreshCw size={15} className="spin" /> : <Send size={15} />}
+              <span>Query</span>
+              <ArrowUpRight size={14} />
             </button>
           </div>
-          <div className="input-hint">
-            Press Enter to send · Shift+Enter for new line · Try "/summary" for the weekly briefing
-          </div>
         </div>
-      </div>
+      </main>
+
+      {/* ─── Footer ─── */}
+      <footer className="site-footer">
+        <div>
+          <span>Skylark Drones — Monday.com Business Intelligence Agent</span>
+        </div>
+        <div className="footer-links">
+          <a
+            href="https://stash.nishanthkonchada.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link"
+          >
+            Design by Stash
+          </a>
+          <a
+            href="https://github.com/NISHANTH-KONCHADA/mondaydotcom-bi-agent"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-link"
+          >
+            Source Code
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
