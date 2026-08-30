@@ -21,8 +21,9 @@ import {
   Bot,
   User,
 } from 'lucide-react';
-import { FrostedLogo } from './cursors/FrostedLogo';
+import { AiLightsCard } from './ai-lights/AiLightsCard';
 import { sendChat, type Message } from './api';
+
 
 
 
@@ -204,12 +205,10 @@ export default function App() {
             className="brand-wrapper"
             style={{ display: 'flex', alignItems: 'center', gap: '14px', textDecoration: 'none' }}
           >
-            <FrostedLogo
-              text="Skylark BI"
-              onClick={clearChat}
-            />
+            <AiLightsCard onClick={clearChat} />
             <span className="brand-tag hide-mobile">Monday.com Live</span>
           </div>
+
 
 
 
