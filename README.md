@@ -2,7 +2,8 @@
 
 An AI-powered Business Intelligence agent that answers founder-level queries by integrating with Monday.com boards (Deals Pipeline + Work Orders) using live data, a Groq-powered LLM, and a premium conversational interface.
 
-**Live Demo:** _[Link after deployment]_
+**Live Hosted Application:** [https://autosre-hackathon-2026.web.app](https://autosre-hackathon-2026.web.app)  
+**Backend API (Cloud Run):** [https://monday-bi-backend-889048520285.asia-south1.run.app](https://monday-bi-backend-889048520285.asia-south1.run.app)
 
 ---
 

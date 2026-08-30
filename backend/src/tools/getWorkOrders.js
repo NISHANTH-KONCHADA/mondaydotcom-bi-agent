@@ -24,7 +24,7 @@ function isDateInRange(dateStr, from, to) {
   return true;
 }
 
-function matchesFilter(wo, filters) {
+function matchesFilter(wo, filters = {}) {
   const f = filters || {};
 
   if (f.sector?.length) {
@@ -56,7 +56,7 @@ function matchesFilter(wo, filters) {
   if (f.startDateFrom || f.startDateTo) {
     if (!isDateInRange(wo.probableStartDate, f.startDateFrom, f.startDateTo)) return false;
   }
-  if (f.startDate) { // backward compat
+  if (f.startDate) {
     if (!isDateInRange(wo.probableStartDate, f.startDate?.from, f.startDate?.to)) return false;
   }
   if (f.hasAnomaly === true && !wo.isNegativeBilling) return false;
@@ -69,79 +69,119 @@ export const getWorkOrdersToolDef = {
   type: 'function',
   function: {
     name: 'get_work_orders',
-    description: `Fetch normalized work orders from the Work Orders board. Apply optional filters.
-Returns a data_quality block with anomaly flags (negative billing amounts) and normalization notes.
-Note: WO Status (Open/Closed) tracks billing lifecycle; Execution Status tracks field work lifecycle — these are DIFFERENT.`,
+    description: `Fetch normalized work orders from the Work Orders board.
+Pass a JSON filters object as the "filters" string parameter.
+Available filter keys (all optional):
+- sector: array of strings (Mining, Powerline, Renewables, Railways, DSP, Construction, Others)
+- execution_status: array of strings (Completed, Ongoing, "Not Started", "Executed until current month")
+- billing_status: array of strings ("Fully Billed", "Partially Billed", Billed, "Not Billed Yet", "Update Required")
+- wo_status: array of strings (Open, Closed) — BILLING lifecycle
+- owner: array of strings (e.g. ["OWNER_001"])
+- hasAnomaly: boolean (true = only negative "amount to be billed" rows)
+- arPriorityOnly: boolean (true = only AR priority accounts)
+Example: {"sector":["Mining"],"wo_status":["Open"]}
+Returns summary stats, breakdowns (execution, billing, sector, owner), financial totals, and anomalies.`,
     parameters: {
       type: 'object',
       properties: {
-        sector: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by sector (Mining, Powerline, Renewables, Railways, DSP, Construction, Others). Case-insensitive.',
-        },
-        execution_status: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by Execution Status: "Completed", "Ongoing", "Not Started", "Executed until current month", "Details pending from Client".',
-        },
-        billing_status: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by normalized Billing Status: "Fully Billed", "Partially Billed", "Billed", "Not Billed Yet", "Update Required".',
-        },
-        wo_status: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by WO Status (billing lifecycle): "Open", "Closed".',
-        },
-        owner: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by BD/KAM Personnel code (OWNER_001, OWNER_002, etc.).',
-        },
-        natureOfWork: {
-          type: 'array', items: { type: 'string' },
-          description: 'Filter by Nature of Work (One time Project, Monthly Contract, Annual Rate Contract, Proof of Concept).',
-        },
-        startDateFrom: {
+        filters: {
           type: 'string',
-          description: 'Filter Probable Start Date >= this ISO date (YYYY-MM-DD).',
-        },
-        startDateTo: {
-          type: 'string',
-          description: 'Filter Probable Start Date <= this ISO date (YYYY-MM-DD).',
-        },
-        hasAnomaly: {
-          type: 'boolean',
-          description: 'If true, return only work orders with negative "Amount to be billed" (over-billing anomaly).',
-        },
-        arPriorityOnly: {
-          type: 'boolean',
-          description: 'If true, return only AR Priority accounts.',
+          description: 'JSON string of filter options. Use "{}" to get all work orders.',
         },
       },
     },
   },
 };
 
-export async function getWorkOrders(filters) {
+export async function getWorkOrders(filters = {}) {
   try {
     const { workOrders, data_quality } = await loadWorkOrders();
     const filtered = workOrders.filter(wo => matchesFilter(wo, filters));
 
     const withAmount = filtered.filter(w => w.amountExclGST !== null).length;
+    const totalAmount = filtered.reduce((s, w) => s + (w.amountExclGST || 0), 0);
+    const totalBilled = filtered.reduce((s, w) => s + (w.billedValueExclGST || 0), 0);
+    const totalCollected = filtered.reduce((s, w) => s + (w.collectedAmount || 0), 0);
+    const totalReceivable = filtered.reduce((s, w) => s + (w.amountReceivable || 0), 0);
     const anomalies = filtered.filter(w => w.isNegativeBilling);
-    const qualitySlice = {
-      ...data_quality,
-      rows_returned: filtered.length,
-      with_amount_count: withAmount,
-      coverage_note: filtered.length > 0
-        ? `Contract value populated for ${withAmount} of ${filtered.length} matching work orders. ` +
-          (filtered.length < workOrders.length ? `(${filtered.length} of ${workOrders.length} total match your filters.)` : '')
-        : 'No matching work orders.',
-      anomalies: anomalies.length > 0
-        ? [`${anomalies.length} work order(s) with negative billing amount (over-billing vs PO): ${anomalies.map(w => w.serialNo || w.dealName).join(', ')}`]
-        : [],
-    };
+    const arPriorityList = filtered.filter(w => Boolean(w.arPriority));
 
-    return { rows: filtered, data_quality: qualitySlice };
+    // Pre-aggregate breakdowns
+    const byExecutionStatus = {}, byBillingStatus = {}, byWOStatus = {}, bySector = {}, byOwner = {};
+    for (const w of filtered) {
+      const es = w.executionStatus || 'Unknown';
+      byExecutionStatus[es] = (byExecutionStatus[es] || { count: 0, amount: 0 });
+      byExecutionStatus[es].count++;
+      byExecutionStatus[es].amount += (w.amountExclGST || 0);
+
+      const bs = w.billingStatus || 'Unknown';
+      byBillingStatus[bs] = (byBillingStatus[bs] || { count: 0, amount: 0, receivable: 0 });
+      byBillingStatus[bs].count++;
+      byBillingStatus[bs].amount += (w.amountExclGST || 0);
+      byBillingStatus[bs].receivable += (w.amountReceivable || 0);
+
+      const ws = w.woStatus || 'Unknown';
+      byWOStatus[ws] = (byWOStatus[ws] || { count: 0, amount: 0 });
+      byWOStatus[ws].count++;
+      byWOStatus[ws].amount += (w.amountExclGST || 0);
+
+      const sec = w.sector || 'Unknown';
+      bySector[sec] = (bySector[sec] || { count: 0, amount: 0 });
+      bySector[sec].count++;
+      bySector[sec].amount += (w.amountExclGST || 0);
+
+      const own = w.ownerCode || 'Unknown';
+      byOwner[own] = (byOwner[own] || { count: 0, amount: 0 });
+      byOwner[own].count++;
+      byOwner[own].amount += (w.amountExclGST || 0);
+    }
+
+    const anomalyDetails = anomalies.slice(0, 10).map(w => ({
+      serialNo: w.serialNo,
+      dealName: w.dealName,
+      customerCode: w.customerCode,
+      amountToBeBilledExcl: w.amountToBeBilledExcl,
+      amountExclGST: w.amountExclGST,
+      billedValueExclGST: w.billedValueExclGST,
+      note: 'Negative amount to be billed indicates over-billing vs PO (anomaly)'
+    }));
+
+    return {
+      summary: {
+        total_matched: filtered.length,
+        total_in_board: data_quality.total_rows,
+        with_amount: withAmount,
+        total_contract_value_inr: Math.round(totalAmount),
+        total_contract_value_cr: parseFloat((totalAmount / 10000000).toFixed(2)),
+        total_billed_value_cr: parseFloat((totalBilled / 10000000).toFixed(2)),
+        total_collected_cr: parseFloat((totalCollected / 10000000).toFixed(2)),
+        total_receivable_cr: parseFloat((totalReceivable / 10000000).toFixed(2)),
+        ar_priority_accounts_count: arPriorityList.length,
+        anomalies_negative_billing_count: anomalies.length,
+      },
+      data_quality: {
+        coverage_note: `Contract amount populated for ${withAmount} of ${filtered.length} work orders.`,
+        normalizations: data_quality.normalizations || [],
+        anomalies: anomalies.length > 0
+          ? [`⚠️ ${anomalies.length} work order(s) with negative billing amount (over-billed vs PO).`]
+          : [],
+      },
+      breakdowns: {
+        by_execution_status: byExecutionStatus,
+        by_billing_status: byBillingStatus,
+        by_wo_status: byWOStatus,
+        by_sector: bySector,
+        by_owner: byOwner,
+      },
+      anomalies: anomalyDetails,
+      ar_priority_samples: arPriorityList.slice(0, 5).map(w => ({
+        serialNo: w.serialNo,
+        dealName: w.dealName,
+        customerCode: w.customerCode,
+        amountReceivable: w.amountReceivable,
+      })),
+    };
   } catch (err) {
-    return { rows: [], data_quality: { error: err.message }, error: err.message };
+    return { error: err.message };
   }
 }
